@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直播報到系統</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #fdfaf5; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 80%; max-width: 300px; text-align: center; }
+        h2 { color: #8d775f; font-size: 1.2rem; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        button { background-color: #c2a68a; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-size: 1rem; width: 100%; }
+        button:active { background-color: #a88d72; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>請輸入報名手機號碼</h2>
+        <input type="tel" id="phone" placeholder="例如: 0912345678">
+        <button onclick="sendData()">確認報到</button>
+    </div>
+
+    <script>
+        // 初始化 LIFF
+        async function main() {
+            await liff.init({ liffId: "你的LIFF_ID" }); // 稍後填入你的 LIFF ID
+            if (!liff.isLoggedIn()) {
+                liff.login();
+            }
+        }
+        main();
+
+        async function sendData() {
+            const phone = document.getElementById('phone').value;
+            const profile = await liff.getProfile();
+            const userId = profile.userId;
+
+            if (!/^09\d{8}$/.test(phone)) {
+                alert("請輸入正確的手機號碼格式");
+                return;
+            }
+
+            // 傳送資料到 Make.com
+            fetch("https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    phone: phone,
+                    userId: userId,
+                    displayName: profile.displayName
+                })
+            }).then(() => {
+                // 送出後自動關閉 LIFF 視窗
+                liff.closeWindow();
+            }).catch(err => alert("傳送失敗，請稍後再試"));
+        }
+    </script>
+</body>
+</html>
