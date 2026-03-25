@@ -22,61 +22,51 @@
     </div>
 
     <script>
-    // 1. 初始化 LIFF (保持原樣，但我們在 sendData 會再確認一次)
-    async function main() {
-        try {
-            await liff.init({ liffId: "2009589067-64QUvzI2" }); 
+    // 強制全域初始化
+    liff.init({ liffId: "2009589067-64QUvzI2" })
+        .then(() => {
+            console.log("初始化成功");
             if (!liff.isLoggedIn()) {
                 liff.login();
             }
-        } catch (err) {
-            console.error("初始化失敗", err);
-        }
-    }
-    main();
-
-    async function sendData() {
-    const btn = document.getElementById('submitBtn');
-    const phone = document.getElementById('phone').value;
-    const targetUrl = "https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm";
-
-    alert("第 1 步：開始執行 sendData");
-
-    try {
-        alert("第 2 步：準備檢查 LIFF 狀態");
-        await liff.ready;
-        
-        if (!liff.isLoggedIn()) {
-            alert("錯誤：尚未登入 LINE，請重新整理網頁");
-            liff.login();
-            return;
-        }
-
-        alert("第 3 步：獲取用戶資料...");
-        const profile = await liff.getProfile();
-        
-        alert("第 4 步：準備發送到 Make.com\n網址：" + targetUrl);
-
-        // 使用傳輸
-        fetch(targetUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                phone: phone,
-                userId: profile.userId,
-                displayName: profile.displayName
-            })
+        })
+        .catch((err) => {
+            alert("LIFF 啟動失敗：" + err.code + " " + err.message);
         });
 
-        alert("第 5 步：發送指令已發出！即將關閉網頁");
-        liff.closeWindow();
+    async function sendData() {
+        const phone = document.getElementById('phone').value;
+        const btn = document.getElementById('submitBtn');
 
-    } catch (err) {
-        alert("偵測到異常錯誤：\n" + err.message);
-        btn.disabled = false;
-        btn.innerText = "確認報到";
+        alert("已點擊按鈕，開始傳送過程");
+
+        try {
+            // 直接抓 Profile，如果不成就會跳到 catch
+            const profile = await liff.getProfile();
+            alert("抓到資料了：" + profile.displayName);
+
+            btn.disabled = true;
+            btn.innerText = "傳送中...";
+
+            fetch("https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    phone: phone,
+                    userId: profile.userId,
+                    displayName: profile.displayName
+                }),
+                keepalive: true
+            });
+
+            alert("指令已發出，即將關閉");
+            liff.closeWindow();
+
+        } catch (err) {
+            alert("錯誤細節：" + err.toString());
+            btn.disabled = false;
+        }
     }
-}
 </script>
 </body>
 </html>
