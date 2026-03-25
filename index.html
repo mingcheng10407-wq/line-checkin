@@ -36,43 +36,43 @@
     main();
 
     async function sendData() {
-    const phone = document.getElementById('phone').value;
     const btn = document.getElementById('submitBtn');
+    const phone = document.getElementById('phone').value;
+    const targetUrl = "https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm";
 
-    if (!/^09\d{8}$/.test(phone)) {
-        alert("請輸入正確的手機號碼格式");
-        return;
-    }
+    alert("第 1 步：開始執行 sendData");
 
     try {
+        alert("第 2 步：準備檢查 LIFF 狀態");
         await liff.ready;
+        
         if (!liff.isLoggedIn()) {
+            alert("錯誤：尚未登入 LINE，請重新整理網頁");
             liff.login();
             return;
         }
 
-        btn.disabled = true;
-        btn.innerText = "報到中...";
-
+        alert("第 3 步：獲取用戶資料...");
         const profile = await liff.getProfile();
+        
+        alert("第 4 步：準備發送到 Make.com\n網址：" + targetUrl);
 
-        // 【關鍵改動】移除 await，讓 fetch 在背景跑，程式直接往下執行關閉
-        fetch("https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm", {
+        // 使用傳輸
+        fetch(targetUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 phone: phone,
                 userId: profile.userId,
                 displayName: profile.displayName
-            }),
-            keepalive: true // 確保網頁關閉後，這筆資料還能傳完
+            })
         });
 
-        // 不管 fetch 成功沒，直接關閉視窗，給客人最好的體感
+        alert("第 5 步：發送指令已發出！即將關閉網頁");
         liff.closeWindow();
 
     } catch (err) {
-        alert("報到異常：" + err.message);
+        alert("偵測到異常錯誤：\n" + err.message);
         btn.disabled = false;
         btn.innerText = "確認報到";
     }
