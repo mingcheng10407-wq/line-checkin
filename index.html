@@ -36,52 +36,47 @@
     main();
 
     async function sendData() {
-        const phone = document.getElementById('phone').value;
-        const btn = document.getElementById('submitBtn');
+    const phone = document.getElementById('phone').value;
+    const btn = document.getElementById('submitBtn');
 
-        if (!/^09\d{8}$/.test(phone)) {
-            alert("請輸入正確的手機號碼格式");
+    if (!/^09\d{8}$/.test(phone)) {
+        alert("請輸入正確的手機號碼格式");
+        return;
+    }
+
+    try {
+        await liff.ready;
+        if (!liff.isLoggedIn()) {
+            liff.login();
             return;
         }
 
-        // 防止重複點擊
         btn.disabled = true;
-        btn.innerText = "處理中...";
+        btn.innerText = "報到中...";
 
-        try {
-            // 【終極防線】不管 main() 跑完沒，這裡強制再等一次 ready
-            await liff.ready; 
-            
-            // 再次確認登入狀態，這能解決 token 過期或遺失的問題
-            if (!liff.isLoggedIn()) {
-                liff.login();
-                return;
-            }
+        const profile = await liff.getProfile();
 
-            // 拿到 Profile
-            const profile = await liff.getProfile();
+        // 【關鍵改動】移除 await，讓 fetch 在背景跑，程式直接往下執行關閉
+        fetch("https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                phone: phone,
+                userId: profile.userId,
+                displayName: profile.displayName
+            }),
+            keepalive: true // 確保網頁關閉後，這筆資料還能傳完
+        });
 
-            // 執行傳送 (我們加一個簡單的 await 確保 fetch 出發了)
-            await fetch("https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    phone: phone,
-                    userId: profile.userId,
-                    displayName: profile.displayName
-                })
-            });
+        // 不管 fetch 成功沒，直接關閉視窗，給客人最好的體感
+        liff.closeWindow();
 
-            // 秒關網頁
-            liff.closeWindow();
-
-        } catch (err) {
-            // 這裡會抓到具體的 LINE SDK 錯誤
-            alert("系統提示：" + err.message);
-            btn.disabled = false;
-            btn.innerText = "確認報到";
-        }
+    } catch (err) {
+        alert("報到異常：" + err.message);
+        btn.disabled = false;
+        btn.innerText = "確認報到";
     }
+}
 </script>
 </body>
 </html>
