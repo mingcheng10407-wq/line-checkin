@@ -22,20 +22,15 @@
     </div>
 
     <script>
-    // 1. 初始化 LIFF
+    // 1. 初始化 LIFF (保持原樣，但我們在 sendData 會再確認一次)
     async function main() {
         try {
-            // 確保初始化完成
             await liff.init({ liffId: "2009589067-64QUvzI2" }); 
-            
             if (!liff.isLoggedIn()) {
                 liff.login();
-            } else {
-                // 等到真正 Login 成功且準備好後，才開放按鈕
-                console.log("LIFF Ready!");
             }
         } catch (err) {
-            alert("LINE 系統啟動失敗，請重新開啟網頁");
+            console.error("初始化失敗", err);
         }
     }
     main();
@@ -54,19 +49,25 @@
         btn.innerText = "處理中...";
 
         try {
-            // 【修正重點】確保在呼叫 Profile 之前，LIFF 是真的準備好的
+            // 【終極防線】不管 main() 跑完沒，這裡強制再等一次 ready
             await liff.ready; 
             
-            const profile = await liff.getProfile();
-            const userId = profile.userId;
+            // 再次確認登入狀態，這能解決 token 過期或遺失的問題
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return;
+            }
 
-            // 執行傳送（不等待回應，直接關閉，避免 Timeout）
-            fetch("https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm", {
+            // 拿到 Profile
+            const profile = await liff.getProfile();
+
+            // 執行傳送 (我們加一個簡單的 await 確保 fetch 出發了)
+            await fetch("https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     phone: phone,
-                    userId: userId,
+                    userId: profile.userId,
                     displayName: profile.displayName
                 })
             });
@@ -75,8 +76,8 @@
             liff.closeWindow();
 
         } catch (err) {
-            // 如果還是報錯，顯示具體內容協助檢查
-            alert("報到異常：" + err.message);
+            // 這裡會抓到具體的 LINE SDK 錯誤
+            alert("系統提示：" + err.message);
             btn.disabled = false;
             btn.innerText = "確認報到";
         }
