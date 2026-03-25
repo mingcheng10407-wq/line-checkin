@@ -22,32 +22,37 @@
     </div>
 
     <script>
-    // 強制全域初始化
+    // 1. 初始化 LIFF
     liff.init({ liffId: "2009584460-HUH3UmwG" })
         .then(() => {
-            console.log("初始化成功");
             if (!liff.isLoggedIn()) {
                 liff.login();
             }
         })
         .catch((err) => {
-            alert("LIFF 啟動失敗：" + err.code + " " + err.message);
+            console.error("LIFF 啟動失敗", err);
         });
 
     async function sendData() {
         const phone = document.getElementById('phone').value;
         const btn = document.getElementById('submitBtn');
 
-        alert("已點擊按鈕，開始傳送過程");
+        // 手機格式檢查
+        if (!/^09\d{8}$/.test(phone)) {
+            alert("請輸入正確的手機號碼格式");
+            return;
+        }
 
         try {
-            // 直接抓 Profile，如果不成就會跳到 catch
+            // 確保環境準備就緒
+            await liff.ready;
             const profile = await liff.getProfile();
-            alert("抓到資料了：" + profile.displayName);
 
+            // 按鈕進入處理狀態
             btn.disabled = true;
-            btn.innerText = "傳送中...";
+            btn.innerText = "報到處理中...";
 
+            // 發送資料給 Make.com (使用 keepalive 確保視窗關閉後依然傳送成功)
             fetch("https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -56,15 +61,19 @@
                     userId: profile.userId,
                     displayName: profile.displayName
                 }),
-                keepalive: true
+                keepalive: true 
             });
 
-            alert("指令已發出，即將關閉");
-            liff.closeWindow();
+            // 成功發射後，0.5秒後關閉視窗，給客人一點視覺反應時間
+            setTimeout(() => {
+                liff.closeWindow();
+            }, 500);
 
         } catch (err) {
-            alert("錯誤細節：" + err.toString());
+            console.error(err);
+            alert("報到異常，請聯繫現場工作人員");
             btn.disabled = false;
+            btn.innerText = "確認報到";
         }
     }
 </script>
