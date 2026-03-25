@@ -22,60 +22,65 @@
     </div>
 
     <script>
-        // 初始化 LIFF
-        async function main() {
-            try {
-                await liff.init({ liffId: "2009589067-64QUvzI2" }); 
-                if (!liff.isLoggedIn()) {
-                    liff.login();
-                }
-            } catch (err) {
-                console.error("LIFF 初始化失敗", err);
+    // 1. 初始化 LIFF
+    async function main() {
+        try {
+            // 確保初始化完成
+            await liff.init({ liffId: "2009589067-64QUvzI2" }); 
+            
+            if (!liff.isLoggedIn()) {
+                liff.login();
+            } else {
+                // 等到真正 Login 成功且準備好後，才開放按鈕
+                console.log("LIFF Ready!");
             }
+        } catch (err) {
+            alert("LINE 系統啟動失敗，請重新開啟網頁");
         }
-        main();
+    }
+    main();
 
-        async function sendData() {
-            const phone = document.getElementById('phone').value;
-            const btn = document.getElementById('submitBtn');
+    async function sendData() {
+        const phone = document.getElementById('phone').value;
+        const btn = document.getElementById('submitBtn');
 
-            if (!/^09\d{8}$/.test(phone)) {
-                alert("請輸入正確的手機號碼格式");
-                return;
-            }
-
-            // 鎖定按鈕防止重複點擊
-            btn.disabled = true;
-            btn.innerText = "處理中...";
-
-            try {
-                const profile = await liff.getProfile();
-                
-                // 改用 await 確保資料傳出去
-                const response = await fetch("https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        phone: phone,
-                        userId: profile.userId,
-                        displayName: profile.displayName
-                    })
-                });
-
-                if (response.ok) {
-                    // 成功傳送後，直接關閉
-                    liff.closeWindow();
-                } else {
-                    alert("伺服器回應錯誤，請聯繫店主");
-                    btn.disabled = false;
-                    btn.innerText = "確認報到";
-                }
-            } catch (err) {
-                alert("傳送失敗，請檢查網路：" + err);
-                btn.disabled = false;
-                btn.innerText = "確認報到";
-            }
+        if (!/^09\d{8}$/.test(phone)) {
+            alert("請輸入正確的手機號碼格式");
+            return;
         }
-    </script>
+
+        // 防止重複點擊
+        btn.disabled = true;
+        btn.innerText = "處理中...";
+
+        try {
+            // 【修正重點】確保在呼叫 Profile 之前，LIFF 是真的準備好的
+            await liff.ready; 
+            
+            const profile = await liff.getProfile();
+            const userId = profile.userId;
+
+            // 執行傳送（不等待回應，直接關閉，避免 Timeout）
+            fetch("https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    phone: phone,
+                    userId: userId,
+                    displayName: profile.displayName
+                })
+            });
+
+            // 秒關網頁
+            liff.closeWindow();
+
+        } catch (err) {
+            // 如果還是報錯，顯示具體內容協助檢查
+            alert("報到異常：" + err.message);
+            btn.disabled = false;
+            btn.innerText = "確認報到";
+        }
+    }
+</script>
 </body>
 </html>
