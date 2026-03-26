@@ -34,48 +34,55 @@
         });
 
     async function sendData() {
-        const phone = document.getElementById('phone').value;
-        const btn = document.getElementById('submitBtn');
+    const phone = document.getElementById('phone').value;
+    const btn = document.getElementById('submitBtn');
 
-        // 手機格式檢查
-        if (!/^09\d{8}$/.test(phone)) {
-            alert("請輸入正確的手機號碼格式");
-            return;
-        }
-
-        try {
-            // 確保環境準備就緒
-            await liff.ready;
-            const profile = await liff.getProfile();
-
-            // 按鈕進入處理狀態
-            btn.disabled = true;
-            btn.innerText = "報到處理中...";
-
-            // 發送資料給 Make.com (使用 keepalive 確保視窗關閉後依然傳送成功)
-            fetch("https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    phone: phone,
-                    userId: profile.userId,
-                    displayName: profile.displayName
-                }),
-                keepalive: true 
-            });
-
-            // 成功發射後，0.5秒後關閉視窗，給客人一點視覺反應時間
-            setTimeout(() => {
-                liff.closeWindow();
-            }, 500);
-
-        } catch (err) {
-            console.error(err);
-            alert("報到異常，請聯繫現場工作人員");
-            btn.disabled = false;
-            btn.innerText = "確認報到";
-        }
+    // 格式檢查
+    if (!/^09\d{8}$/.test(phone)) {
+        alert("請輸入正確的手機號碼格式");
+        return;
     }
+
+    try {
+        await liff.ready;
+        const profile = await liff.getProfile();
+
+        btn.disabled = true;
+        btn.innerText = "報到處理中...";
+
+        // 1. 同步傳送資料給 Make.com (後台紀錄)
+        fetch("https://hook.us2.make.com/q75gu89l80ritl1f4ak82lhikbb30ybm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                phone: phone,
+                userId: profile.userId,
+                displayName: profile.displayName
+            }),
+            keepalive: true 
+        });
+
+        // 2. 【核心改動】強制手機幫用戶發送一則訊息給你的官方帳號
+        // 這一步會讓用戶出現在你的對話列表裡
+        if (liff.isInClient()) { // 確保是在 LINE App 內執行
+            await liff.sendMessages([
+                {
+                    type: 'text',
+                    text: '我已完成直播報到！我的電話是：' + phone
+                }
+            ]);
+        }
+
+        // 3. 成功後關閉視窗
+        liff.closeWindow();
+
+    } catch (err) {
+        console.error(err);
+        alert("報到失敗，請確認是否已授權或加好友");
+        btn.disabled = false;
+        btn.innerText = "確認報到";
+    }
+}
 </script>
 </body>
 </html>
